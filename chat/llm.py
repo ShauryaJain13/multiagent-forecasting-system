@@ -39,8 +39,6 @@ class LLMClient:
             return assistant_message
 
         except Exception as e:
-            # self._handle_error(e)
-            # return "Sorry, I couldn't contact the language model"
             print(f"LLM Error: {e}")
             raise
 
