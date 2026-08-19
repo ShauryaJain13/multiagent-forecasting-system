@@ -32,7 +32,8 @@ class AgentState:
     def to_dict(self):
         """
         Converts the state to a dictionary for easy readability.
-        This also allows the state to be included in the context in an easier manner
+        This also allows the state to be included in the context in an easier
+        manner
         """
         return {"user_request": self.user_request,
                 "data": self.data,

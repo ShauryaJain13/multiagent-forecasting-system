@@ -9,16 +9,16 @@ class BaseAgent:
 
     def __init__(self, name, llm, tools, system_prompt, prompt_builder,
                  current_state, memory, max_iterations=10):
-            self.name = name
-            self.llm = llm
-            self.tools = tools
-            self.system_prompt = system_prompt
-            self.prompt_builder = prompt_builder
-            self.current_state = current_state
-            self.memory = memory
-            self.max_iterations = max_iterations
+        self.name = name
+        self.llm = llm
+        self.tools = tools
+        self.system_prompt = system_prompt
+        self.prompt_builder = prompt_builder
+        self.current_state = current_state
+        self.memory = memory
+        self.max_iterations = max_iterations
     
-    def run(self, message, task, state):
+    def run(self, task, state):
         """
         Run the code until satisfactory conditions are met
         accept the input, generate output, and keep the loop of ReAct until
@@ -121,18 +121,19 @@ class BaseAgent:
         Adding the tool call and its result to the memory
         """
         tool_calls = [tool_call.model_dump()
-                    for tool_call in response.tool_calls]
+                      for tool_call in response.tool_calls]
 
         self.memory.add({"role": "assistant",
-                        "content": response.content,
-                        "tool_calls": tool_calls})
+                         "content": response.content,
+                         "tool_calls": tool_calls})
         self.memory.add({"role": "tool",
-                        "tool_call_id": call.id,
-                        "content": str(result)})
+                         "tool_call_id": call.id,
+                         "content": str(result)})
 
     def _build_context(self, task, state):
         """
         Create context for the LLM if necessary
         """
         context = state.to_dict()
-        return self.prompt_builder.build_messages(self.memory, self.system_prompt, context)
+        return self.prompt_builder.build_messages(self.memory,
+                                                  self.system_prompt, context)
