@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
-from xgboost import XGBoostRegressor
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from xgboost import XGBRegressor
 
 
 class NaiveModel:
@@ -33,8 +34,8 @@ class HoltWinters:
 
     name = "holt_winters"
 
-    def __init__(self, seaonality=7):
-        self.seasonality = 7
+    def __init__(self, seasonality=7):
+        self.seasonality = seasonality
         self.model = None
         self.fitted_model = None
 
@@ -58,12 +59,13 @@ class XGBoost:
     """
     This class is to fit and predict models to the XGBoost Model
     """
+    name = "xgboost"
 
     def __init__(self, n_lags=7):
         self.lags = n_lags
-        self.model = XGBoostRegressor(n_estimators=200, max_depth=5,
-                                      learning_rate=0.05,
-                                      objective="reg:squarederror")
+        self.model = XGBRegressor(n_estimators=200, max_depth=5,
+                                  learning_rate=0.05,
+                                  objective="reg:squarederror")
         self.history = None
 
     def _create_features(self, series):
@@ -95,9 +97,49 @@ class XGBoost:
         predictions = []
 
         for _ in range(horizon):
-            features = np.array(history[-self.lags]).reshape(1, -1)
+            # features = np.array(history[-self.lags:]).reshape(1, -1)
+            # prediction = self.model.predict(features)[0]
+
+            lag_values = np.array(history[-self.lags:])
+            features = pd.DataFrame([lag_values], columns=[f"lag_{i}"
+                                                           for i in
+                                                           range(1, self.lags
+                                                                 + 1)])
             prediction = self.model.predict(features)[0]
             predictions.append(prediction)
             history.append(prediction)
 
         return np.array(predictions)
+
+
+class SARIMAModel:
+    """
+    Seasonal ARIMA forecasting model.
+    """
+
+    name = "sarima"
+
+    def __init__(self, order=(1, 1, 1), seasonal_order=(1, 1, 1, 7)):
+        self.order = order
+        self.seasonal_order = seasonal_order
+        self.model = None
+        self.fitted_model = None
+
+    def fit(self, series):
+        """
+        This function is to fit the data series to the model
+        """
+        self.model = SARIMAX(series, order=self.order,
+                             seasonal_order=self.seasonal_order,
+                             enforce_stationarity=False,
+                             enforce_invertibility=False)
+
+        self.fitted_model = self.model.fit(disp=False)
+        return self
+
+    def predict(self, horizon):
+        """
+        This function is to predict the values of the series in the
+        given horizon
+        """
+        return self.fitted_model.forecast(steps=horizon)

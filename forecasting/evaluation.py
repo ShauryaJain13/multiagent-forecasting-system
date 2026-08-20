@@ -44,9 +44,16 @@ def select_best_model(models, train, test):
     return the model with the lowest MAPE.
     """
     results = []
+    best_model = None
+    best_mape = float("inf")
+
     for model in models:
         result = evaluate_model(model, train, test)
         results.append(result)
+        if result["MAPE"] < best_mape:
+            best_mape = result["MAPE"]
+            best_model = model
 
-    best_result = min(results, key=lambda x: x["MAPE"])
-    return best_result, results
+    # best_result = min(results, key=lambda x: x["MAPE"])
+    # return best_result, results
+    return best_model, results
