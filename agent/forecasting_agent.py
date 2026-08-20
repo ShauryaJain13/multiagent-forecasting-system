@@ -33,7 +33,7 @@ class ForecastingAgent(BaseAgent):
         data_summary = state.data_summary
         models = self._get_potential_models(data_summary)
         results = {}
-        
+
         for model in models:
             score = self._evaluate_model(model, data, data_summary)
             results[model] = score
@@ -51,7 +51,7 @@ class ForecastingAgent(BaseAgent):
         """
         The different basic kinds of forecasting models available
         """
-        models = ["naive", "holt-winters", "xgboost", "lightgbm"]
+        models = ["naive", "holt-winters", "xgboost"]
         if summary.get("has_seasonality"):
             models.append("sarima")
         return models
