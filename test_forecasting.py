@@ -4,7 +4,8 @@ import pandas as pd
 from forecasting.models import (
     NaiveModel,
     HoltWinters,
-    XGBoost
+    XGBoost,
+    SARIMAModel
 )
 
 from forecasting.evaluation import (
@@ -83,7 +84,9 @@ models = [
 
     XGBoost(
         n_lags=7
-    )
+    ),
+
+    SARIMAModel()
 
 ]
 

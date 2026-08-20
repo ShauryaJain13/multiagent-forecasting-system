@@ -57,3 +57,46 @@ def select_best_model(models, train, test):
     # best_result = min(results, key=lambda x: x["MAPE"])
     # return best_result, results
     return best_model, results
+
+
+def walk_forward_validation(model_class, series, train_size, horizon, step):
+    """
+    Alternative to the evaluation() method, it conducts walk-forward
+    validation on the data to ensure the model is the best fit
+    """
+    results = []
+    train_end = train_size
+    while train_end + horizon <= len(series):
+        train = series.iloc[:train_end]
+        test = series.iloc[train_end:(train_end + horizon)]
+        model = model_class()
+        model.fit(train)
+        predictions = model.predict(horizon)
+
+        mod_mae = mae(test, predictions)
+        mod_mape = mape(test, predictions)
+        results.append({"MAE": mod_mae,
+                        "MAPE": mod_mape})
+
+    train_end += step
+
+    return results
+
+
+def evaluate_walk_forward(model_class, series, train_size, horizon, step):
+    """
+    This function evaluates the results of the walk_forward validation
+    and returns the best model for the data
+    """
+    fold_results = walk_forward_validation(model_class, series, train_size,
+                                           horizon, step)
+    average_mae = np.mean([results["MAE"] for results in fold_results])
+    average_mape = np.mean([results["MAPE"] for results in fold_results])
+
+    return {"model": model_class.name,
+            "MAE": average_mae,
+            "MAPE": average_mape,
+            "folds": fold_results}
+
+
+

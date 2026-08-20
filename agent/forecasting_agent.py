@@ -72,5 +72,5 @@ class ForecastingAgent(BaseAgent):
         """
         models = ["naive", "holt-winters", "xgboost", "sarima"]
         # if summary.get("has_seasonality"):
-            # models.append("sarima")
+        # models.append("sarima")
         return models
