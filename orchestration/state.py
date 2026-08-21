@@ -10,6 +10,7 @@ class AgentState:
         self.forecast = None
         self.forecast_metrics = None
         self.anomalies = []
+        self.anomaly_analysis = None
         self.current_agent = None
         self.completed_agents = []
         self.errors = []
@@ -47,6 +48,7 @@ class AgentState:
                 "forecast": self.forecast,
                 "forecast_metrics": self.forecast_metrics,
                 "anomalies": self.anomalies,
+                "anomaly_analysis": self.anomaly_analysis,
                 "current_agent": self.current_agent,
                 "completed_agents": self.completed_agents,
                 "errors": self.errors}

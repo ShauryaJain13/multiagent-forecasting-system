@@ -6,8 +6,9 @@ class Orchestrator:
     This class is the functionality behind the MAS. It orchestrates which data
     is passed to which agent, when it is passed, and what to do next
     """
-    def __init__(self, llm, prompt_builder, data_agent, forecasting_agent,
-                 anomaly_agent, max_iterations=10):
+    def __init__(self, router, llm, prompt_builder, data_agent,
+                 forecasting_agent, anomaly_agent, max_iterations=10):
+        self.router = router
         self.llm = llm
         self.prompt_builder = prompt_builder
         self.agents = {"data_agent": data_agent,
@@ -27,17 +28,26 @@ class Orchestrator:
             if self.is_task_complete(state):
                 break
 
-            next_agent_name = self.choose_agent(task, state)
+            # next_agent_name = self.choose_agent(task, state)
+
+            decision = self.router.route(task, state)
+            next_agent_name = decision["agent"]
+
             if next_agent_name not in self.agents:
                 state.add_error({"component": "orchestrator",
                                  "error": f"unknown agent {next_agent_name}"})
                 break
 
+            agent_task = decision["task"]
             next_agent = self.agents[next_agent_name]
-            state.set_current_agent(next_agent)
+            state.set_current_agent(next_agent.name)
+
+            # next_agent.run(agent_task, state)
+            # next_agent = self.agents[next_agent_name]
+            # state.set_current_agent(next_agent)
 
             try:
-                next_agent.run(task, state)
+                next_agent.run(agent_task, state)
             except Exception as e:
                 state.add_error({"agent": next_agent_name,
                                  "error": str(e)})
@@ -46,11 +56,11 @@ class Orchestrator:
             # if self.is_task_complete(state) is True:
             #     self.is_complete = True
             #     break
-
-        state.add_error({"component": "orchestrator",
-                         "error": (f"Maximum iterations ({self.max_iterations}"
-                                   ") reached before the task was completed.")}
-                        )
+        else:
+            state.add_error({
+                "component": "orchestrator",
+                "error": (f"Maximum iterations ({self.max_iterations}"
+                          ") reached before the task was completed.")})
 
         # while not self.is_complete(state):
         #     next_agent = self.choose_agent(task, state)
