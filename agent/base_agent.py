@@ -17,7 +17,7 @@ class BaseAgent:
         # self.current_state = current_state
         self.memory = memory
         self.max_iterations = max_iterations
-    
+
     def run(self, task, state):
         """
         Run the code until satisfactory conditions are met

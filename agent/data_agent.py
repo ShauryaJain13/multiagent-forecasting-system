@@ -7,7 +7,7 @@ class DataAgent(BaseAgent):
     """
 
     def __init__(self, llm, tools, prompt_builder, memory):
-        super().__init__(name="Data Agent", llm=llm, tools=tools, 
+        super().__init__(name="Data Agent", llm=llm, tools=tools,
                          prompt_builder=prompt_builder, memory=memory,
                          system_prompt="You are responsible for understanding"
                          "the data set. You conduct an analysis of the data,"
@@ -25,7 +25,7 @@ class DataAgent(BaseAgent):
         # data = state.data
         # if data is None:
         #     raise ValueError("No data provided")
-        
+
         # summary = self.analyze_dataset(data)  # result)
         # state.data_summary = summary
         # state.mark_agent_complete(self.name)

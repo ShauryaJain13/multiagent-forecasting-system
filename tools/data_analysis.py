@@ -30,7 +30,7 @@ class DataAnalyzer:
         if data_frame is None:
             raise ValueError("No dataset is currently loaded.")
 
-        summary = {"rows": len(data_frame), 
+        summary = {"rows": len(data_frame),
                    "columns": list(data_frame.columns),
                    "data_types": (data_frame.dtypes.astype(str).to_dict()),
                    "missing_values": (data_frame.isnull().sum().to_dict()),
