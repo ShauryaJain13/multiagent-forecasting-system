@@ -14,15 +14,19 @@ class DataAgent(BaseAgent):
                          "such as the columns, rows, statistical analysis,"
                          "missing values and time-series characteristics")
 
-    def run(self, task, state):
+    def run(self, state):  # , task, state):
         """
         This function runs the agent and updates the state as necessary
         """
-        result = super().run(task, state)
-        summary = self.analyze_dataset(result)
+        # result = super().run(task, state)
+        data = state.data
+        if data is None:
+            raise ValueError("No data provided")
+        
+        summary = self.analyze_dataset(data)  # result)
         state.data_summary = summary
         state.mark_agent_complete(self.name)
-        return result
+        return summary  # result
 
     def analyze_dataset(self, data_frame):
         """

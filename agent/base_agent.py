@@ -8,13 +8,13 @@ class BaseAgent:
     """
 
     def __init__(self, name, llm, tools, system_prompt, prompt_builder,
-                 current_state, memory, max_iterations=10):
+                 memory, max_iterations=10):
         self.name = name
         self.llm = llm
         self.tools = tools
         self.system_prompt = system_prompt
         self.prompt_builder = prompt_builder
-        self.current_state = current_state
+        # self.current_state = current_state
         self.memory = memory
         self.max_iterations = max_iterations
     
@@ -54,6 +54,8 @@ class BaseAgent:
             except Exception as e:
                 state.add_error({"agent": self.name,
                                  "error": str(e)})
+                result = {"result": "error",
+                          "error": str(e)}
             
             # result = self._handle_tool_call(tool_call)
             self._add_tool_call_result(response, tool_call, result)
@@ -63,7 +65,8 @@ class BaseAgent:
                 # state.extend(str(e))
                 # return "An error occured"
 
-        return f"Maximum iterations {self.max_iterations} reached, agent has stopped"
+        return f"Maximum iterations {self.max_iterations} reached, agent"\
+               "has stopped"
 
     def _is_tool_call(self, response):
         """
@@ -107,14 +110,19 @@ class BaseAgent:
         """
         tool = self.tools.get(tool_name)
         if tool is None:
-            self.current_state.errors.append("Tool is not registered")
             raise ValueError(f"Tool {tool_name} is not registered")
 
-        try:
-            return tool.execute(arguments)
-        except Exception as e:
-            return {"status": "error",
-                    "error": str(e)}
+        return tool.execute(arguments)
+
+        # if tool is None:
+        #     state.add_error("Tool is not registered")
+        #     raise ValueError(f"Tool {tool_name} is not registered")
+
+        # try:
+        #     return tool.execute(arguments)
+        # except Exception as e:
+        #     return {"status": "error",
+        #             "error": str(e)}
 
     def _add_tool_call_result(self, response, call, result):
         """

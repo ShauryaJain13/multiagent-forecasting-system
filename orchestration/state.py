@@ -29,6 +29,12 @@ class AgentState:
 
         self.current_agent = None
 
+    def set_current_agent(self, agent):
+        """
+        Setting current agent
+        """
+        self.current_agent = agent
+
     def to_dict(self):
         """
         Converts the state to a dictionary for easy readability.

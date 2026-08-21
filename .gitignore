@@ -23,3 +23,5 @@ Thumbs.db
 
 # Generated files
 outputs/
+
+test_forecasting.py

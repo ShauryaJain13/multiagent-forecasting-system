@@ -9,7 +9,7 @@ from forecasting.models import (
 )
 
 from forecasting.evaluation import (
-    select_best_model
+    best_model_walk_forward
 )
 
 
@@ -74,42 +74,22 @@ print("Testing observations:", len(test))
 # 3. Create candidate models
 # ----------------------------------
 
-models = [
-
-    NaiveModel(),
-
-    HoltWinters(
-        seasonality=7
-    ),
-
-    XGBoost(
-        n_lags=7
-    ),
-
-    SARIMAModel()
-
-]
+models = [NaiveModel, HoltWinters, XGBoost, SARIMAModel]
 
 
 # ----------------------------------
 # 4. Evaluate models
 # ----------------------------------
 
-best_model, results = (
-    select_best_model(
-        models,
-        train,
-        test
-    )
-)
+best_result, results = (best_model_walk_forward(models, series, 100, 7, 14))
 
 
 # ----------------------------------
 # 5. Print results
 # ----------------------------------
 
-print("\nMODEL RESULTS")
-print("-" * 40)
+print("\nWALK-FORWARD RESULTS")
+print("-" * 50)
 
 for result in results:
 
@@ -120,22 +100,19 @@ for result in results:
     )
 
 
-# ----------------------------------
-# 6. Best model
-# ----------------------------------
-
 print("\nBEST MODEL")
-print("-" * 40)
+print("-" * 50)
 
 print(
-    best_model.name
+    best_result["model"]
 )
-
 
 # ----------------------------------
 # 7. Train best model on all data
 # ----------------------------------
 
+best_model_class = best_result["model_class"]
+best_model = best_model_class()
 best_model.fit(series)
 
 
@@ -145,9 +122,7 @@ best_model.fit(series)
 
 horizon = 7
 
-forecast = best_model.predict(
-    horizon
-)
+forecast = best_model.predict(horizon)
 
 
 print("\nFORECAST")
