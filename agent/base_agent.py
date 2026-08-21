@@ -56,14 +56,7 @@ class BaseAgent:
                                  "error": str(e)})
                 result = {"result": "error",
                           "error": str(e)}
-            
-            # result = self._handle_tool_call(tool_call)
             self._add_tool_call_result(response, tool_call, result)
-            # except Exception as e:
-                # self.memory.add({"role": "tool",
-                #                 "content": str(e)})
-                # state.extend(str(e))
-                # return "An error occured"
 
         return f"Maximum iterations {self.max_iterations} reached, agent"\
                "has stopped"

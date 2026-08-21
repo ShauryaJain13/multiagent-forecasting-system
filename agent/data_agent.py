@@ -14,29 +14,32 @@ class DataAgent(BaseAgent):
                          "such as the columns, rows, statistical analysis,"
                          "missing values and time-series characteristics")
 
-    def run(self, state):  # , task, state):
+    def run(self, task, state):
         """
         This function runs the agent and updates the state as necessary
         """
-        # result = super().run(task, state)
-        data = state.data
-        if data is None:
-            raise ValueError("No data provided")
-        
-        summary = self.analyze_dataset(data)  # result)
-        state.data_summary = summary
+        result = super().run(task, state)
         state.mark_agent_complete(self.name)
-        return summary  # result
+        return result
+        # result = super().run(task, state)
+        # data = state.data
+        # if data is None:
+        #     raise ValueError("No data provided")
+        
+        # summary = self.analyze_dataset(data)  # result)
+        # state.data_summary = summary
+        # state.mark_agent_complete(self.name)
+        # return summary  # result
 
-    def analyze_dataset(self, data_frame):
-        """
-        Conducting analysis on the data
-        """
-        summary = {
-            "rows": len(data_frame),
-            "columns": list(data_frame.columns),
-            "data_types": data_frame.dtypes.astype(str).to_dict(),
-            "missing_values": data_frame.isnull().sum().to_dict(),
-            "duplicated_rows": int(data_frame.duplicated().sum())
-        }
-        return summary
+    # def analyze_dataset(self, data_frame):
+    #     """
+    #     Conducting analysis on the data
+    #     """
+    #     summary = {
+    #         "rows": len(data_frame),
+    #         "columns": list(data_frame.columns),
+    #         "data_types": data_frame.dtypes.astype(str).to_dict(),
+    #         "missing_values": data_frame.isnull().sum().to_dict(),
+    #         "duplicated_rows": int(data_frame.duplicated().sum())
+    #     }
+    #     return summary
