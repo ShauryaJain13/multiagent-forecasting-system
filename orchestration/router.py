@@ -32,7 +32,7 @@ class Router:
 
     def route(self, task, state):
         """
-        Decide which agent should act next.
+        Decide which agent should act next, or answer directly.
         """
         context = state.to_dict()
         system_prompt = self._build_system_prompt()
@@ -64,11 +64,18 @@ class Router:
         return f"""
 You are the Router for a multi-agent data forecasting system.
 
-Your job is to determine which specialist agent should act next.
+Your job is to determine which specialist agent should act next,
+OR to answer the user directly if no specialist is needed.
 
 Available agents:
 
 {agents}
+
+Use "direct_response" instead of a specialist agent when the user's
+message does not require data analysis, anomaly detection, or
+forecasting -- for example: greetings, thanks, small talk, or
+general questions you can answer yourself using only the shared
+state already available.
 
 You must examine:
 1. The user's original request.
@@ -77,16 +84,24 @@ You must examine:
 4. Any errors or warnings.
 5. What work is still required.
 
-Do NOT perform the task yourself.
+Do NOT perform data analysis, anomaly detection, or forecasting
+yourself. Delegate that work to the appropriate specialist agent.
 
-Instead, delegate the next appropriate task to one specialist agent.
+Return ONLY valid JSON in one of these two exact formats:
 
-Return ONLY valid JSON in this exact format:
-
+For delegating to a specialist:
 {{
     "agent": "agent_name",
     "task": "specific task for the selected agent",
     "reason": "brief explanation for why this agent should act next"
+}}
+
+For answering directly (no specialist needed):
+{{
+    "agent": "direct_response",
+    "task": "",
+    "reason": "brief explanation for why no specialist is needed",
+    "response": "the actual message to send back to the user"
 }}
 
 The "agent" field MUST be one of:
@@ -94,6 +109,7 @@ The "agent" field MUST be one of:
 - data_agent
 - forecasting_agent
 - anomaly_agent
+- direct_response
 
 Do not return markdown.
 Do not include additional fields.
@@ -128,7 +144,12 @@ Do not include additional fields.
         if missing:
             raise ValueError(f"Router decision is missing fields: {missing}")
 
-        if decision["agent"] not in self.available_agents:
+        valid_agents = set(self.available_agents.keys()) | {"direct_response"}
+        # CHANGED: "direct_response" is now a valid value alongside the
+        # three specialists, since the router can answer directly instead
+        # of always being forced to delegate.
+
+        if decision["agent"] not in valid_agents:
             raise ValueError(f"Unknown agent: {decision['agent']}")
 
         if not isinstance(decision["task"], str):
@@ -136,3 +157,14 @@ Do not include additional fields.
 
         if not isinstance(decision["reason"], str):
             raise TypeError("Router reason must be a string.")
+
+        # CHANGED: when the router chooses direct_response, it must also
+        # supply the actual text to send back -- otherwise the orchestrator
+        # would have nothing to show the user.
+        if decision["agent"] == "direct_response":
+            if "response" not in decision:
+                raise ValueError(
+                    "direct_response decisions must include a 'response' "
+                    "field.")
+            if not isinstance(decision["response"], str):
+                raise TypeError("Router response must be a string.")

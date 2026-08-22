@@ -28,19 +28,27 @@ class Orchestrator:
             if self.is_task_complete(state):
                 break
 
-            # CHANGED: router.route() can raise (invalid/malformed JSON
-            # from the LLM, missing fields, unknown agent name, LLM
-            # request failure). Previously this call wasn't wrapped, so
-            # any routing failure would crash the whole request with no
-            # graceful fallback -- now it's logged to state.errors and the
-            # loop breaks, still letting generate_final_response report
-            # back whatever was accomplished so far.
             try:
                 decision = self.router.route(task, state)
             except Exception as e:
                 state.add_error({"component": "orchestrator",
                                  "error": f"routing failed: {e}"})
                 break
+
+            # CHANGED: this is the main fix. When the router decides the
+            # message doesn't need a specialist agent (greetings, thanks,
+            # general questions), it returns "direct_response" plus the
+            # actual text to send back. Previously there was no such
+            # option -- the router was forced to pick data_agent /
+            # forecasting_agent / anomaly_agent even for "hello", and
+            # is_task_complete() could never become true without both
+            # state.data and state.forecast being set, so the loop would
+            # burn through all max_iterations before falling through to
+            # generate_final_response() with an essentially empty state
+            # to summarize -- which is why you were seeing blank output.
+            if decision["agent"] == "direct_response":
+                self.final_response = decision["response"]
+                return self.final_response
 
             next_agent_name = decision["agent"]
 
@@ -65,35 +73,18 @@ class Orchestrator:
                 "error": (f"Maximum iterations ({self.max_iterations}"
                           ") reached before the task was completed.")})
 
-        # CHANGED: this is the main fix. Every code path above (early
-        # break on completion, break on error, or the for-else exhaustion
-        # branch) now converges here, so run() always returns a real
-        # answer built from whatever ended up in shared state, instead of
-        # implicitly returning None.
         self.final_response = self.generate_final_response(task, state)
         return self.final_response
-
-    # CHANGED: removed choose_agent(). It was dead code -- an earlier,
-    # simpler "LLM returns just an agent name" approach that got fully
-    # superseded by Router (router.py), which returns structured JSON
-    # with an agent name, task, AND reason. run() only ever calls
-    # self.router.route(), never self.choose_agent(), so this method was
-    # never executed. Removed to avoid confusion about which one is live.
 
     def is_task_complete(self, state):
         """
         Determine whether enough work has been completed
         to produce a final answer.
 
-        NOTE (not fixed, flagging for awareness): this requires BOTH
-        state.data and state.forecast to be set, regardless of what the
-        user actually asked for. A request like "are there any anomalies
-        in this dataset?" doesn't need a forecast, but the loop will keep
-        routing to forecasting_agent anyway until max_iterations is hit,
-        since this check has no way to know the task didn't require
-        forecasting. Worth revisiting -- e.g. having the Router signal
-        "done" explicitly, or giving is_task_complete per-task criteria --
-        once you're ready to handle non-forecasting requests well.
+        NOTE: still requires both state.data and state.forecast, which is
+        correct for actual forecasting requests, but only reachable now
+        because direct_response gives conversational messages a proper
+        exit path that doesn't depend on this check at all.
         """
         if state.data is None or state.forecast is None:
             return False
