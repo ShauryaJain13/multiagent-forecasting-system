@@ -1,5 +1,5 @@
 from agent.base_agent import BaseAgent
-from forecasting.evaluation import evaluate_model
+from forecasting.evaluation import best_model_walk_forward
 # from forecasting.models import NaiveModel, HoltWinters, XGBoostRegressor
 
 
@@ -43,7 +43,8 @@ class ForecastingAgent(BaseAgent):
         train_data = data.iloc[:split_index]
         test_data = data.iloc[split_index:]
 
-        best_model, results = evaluate_model(models, train_data, test_data)
+        best_model, results = evaluate_walk_forward(models, train_data,
+                                                    test_data)
         return best_model, results
 
         # results = {}

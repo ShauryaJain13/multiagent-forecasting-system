@@ -1,46 +1,67 @@
+from orchestration.orchestrator import Orchestrator
+from orchestration.router import Router
+
+from agent.data_agent import DataAgent
+from agent.anomaly_agent import AnomalyAgent
+from agent.forecasting_agent import ForecastingAgent
+
+from tools.registry import ToolRegistry
+
+from chat.llm import LLMClient
+from chat.prompts import Prompt_Builder
+from agent.memory import Memory
+
+from orchestration.state import AgentState
+
+
 class Controller:
     """
-    This class serves as the 'brain' or the controller of the entire operation.
-    It coordinates with the other classes to work and control the flow of the
-    entire chatbot
+    Controls and initializes the Multi-Agent System.
     """
 
-    def __init__(self, agent):
-        self.agent = agent
+    def __init__(self):
+        self.llm = LLMClient()
+        self.prompt_builder = Prompt_Builder()
+        self.memory = Memory()
 
-    def handle_message(self, message: str):
+        self.data_tools = ToolRegistry()
+        self.anomaly_tools = ToolRegistry()
+        self.forecasting_tools = ToolRegistry()
+
+        self.data_agent = DataAgent(llm=self.llm, tools=self.data_tools,
+                                    prompt_builder=self.prompt_builder,
+                                    memory=self.memory)
+
+        self.anomaly_agent = AnomalyAgent(llm=self.llm,
+                                          tools=self.anomaly_tools,
+                                          prompt_builder=self.prompt_builder,
+                                          memory=self.memory)
+
+        self.forecasting_agent = ForecastingAgent(llm=self.llm,
+                                                  tools=self.forecasting_tools,
+                                                  prompt_builder=self.
+                                                  prompt_builder,
+                                                  memory=self.memory)
+
+        self.router = Router(llm=self.llm, prompt_builder=self.prompt_builder)
+
+        self.orchestrator = Orchestrator(router=self.router,
+                                         data_agent=self.data_agent,
+                                         forecasting_agent=self.
+                                         forecasting_agent,
+                                         anomaly_agent=self.anomaly_agent,
+                                         max_iterations=10)
+
+    def run(self, task):
         """
-        This function accepts an input from the user
+        Start the Multi-Agent System.
+
+        Creates a shared AgentState and gives it to
+        the Orchestrator.
         """
-        return self.agent.run(message)
-
-    def handle_exit(self):
-        """
-        Terminating application
-        """
-        print("Exiting agent...")
-
-    def loop(self):
-        """
-        Keeps running the application over and over until the user
-        decides to exit
-        """
-        print("Agent has started. Type 'exit' or 'quit' to quit")
-
-        while True:
-            try:
-                message = input("\nYou: ")
-
-                if message.lower() in {"exit", "quit"}:
-                    self.handle_exit()
-                    break
-
-                response = self.handle_message(message)
-                print(f"\nAssistant: {response}")
-
-            except KeyboardInterrupt:
-                self.handle_exit()
-                break
-
-            except Exception as e:
-                print(f"Error: {e}")
+        state = AgentState(task)
+        response = self.orchestrator.run(
+            task=task,
+            state=state
+        )
+        return response
