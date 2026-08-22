@@ -2,11 +2,20 @@ class ForecastTool:
     """
     Tool that performs a forecast using the selected
     forecasting model.
+
+    NOTE: as of the current forecasting_agent.py, this tool is not
+    actually wired up anywhere. ForecastingAgent.run() bypasses the LLM
+    tool-calling loop entirely (it never calls super().run()) and instead
+    deterministically evaluates/fits/predicts using
+    forecasting.evaluation + forecasting.models directly. This class is
+    fixed below for correctness, but it stays unregistered/unused unless
+    you decide to make forecasting LLM-driven through tool calls instead.
     """
 
     name = "forecast"
 
-    description = ("Generate a forecast for the loaded time-series data."
+    description = ("Generate a forecast for the loaded time-series data. "
+                   # CHANGED: added space
                    "Requires a forecasting model and forecast horizon.")
 
     def __init__(self, state, forecasting_engine):
@@ -16,21 +25,33 @@ class ForecastTool:
     def schema(self):
         """
         The official schema of the tool
+
+        CHANGED: wrapped in {"type": "function", "function": {...}}.
         """
-        return {"name": self.name,
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
                 "description": self.description,
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "model": {"type": "string",
-                                  "description": ("The forecasting model to"
-                                                  "use. For example: naive, "
-                                                  "holt_winters or xgboost.")},
-                        "horizon": {"type": "integer",
-                                    "description": ("Number of future"
-                                                    "observations to forecast."
-                                                    )}},
-                        "required": ["model", "horizon"]}}
+                        "model": {
+                            "type": "string",
+                            "description": ("The forecasting model to use. "
+                                            "For example: naive, "
+                                            "holt_winters or xgboost.")
+                        },
+                        "horizon": {
+                            "type": "integer",
+                            "description": ("Number of future observations "
+                                            "to forecast.")
+                        }
+                    },
+                    "required": ["model", "horizon"]
+                }
+            }
+        }
 
     def execute(self, arguments):
         """

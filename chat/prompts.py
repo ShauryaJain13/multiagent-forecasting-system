@@ -1,40 +1,62 @@
+import json
+
 from agent.memory import Memory
 
 
 class Prompt_Builder:
     """
-    This class accepts the history of the chat, the system prompt
-    (how the model is supposed to behave) and the current message
-    that the user just inputted. It is supposed to create a model
-    prompt that the LLM can process and generate an answer of.
+    Builds messages that are sent to the LLM.
+
+    The prompt can contain:
+    - a system prompt describing the role of the agent
+    - conversation history
+    - the current shared AgentState/context
     """
 
     def __init__(self, system_prompt=None):
         self.system_prompt = system_prompt
 
-    def build_messages(self, history: Memory = None) -> list:
+    def build_messages(self, memory: Memory = None, system_prompt=None,
+                       context=None) -> list:
         """
-        This method builds the actual prompt from the given information
+        Build the messages sent to the LLM.
         """
         messages = []
-        messages.append({
-            "role": "system",
-            "content": self.system_prompt
-        })
-        if history is not None:
-            messages.extend(history.get_messages())
+        current_system_prompt = (system_prompt if system_prompt is not None
+                                 else self.system_prompt)
 
+        if current_system_prompt is not None:
+            messages.append({"role": "system",
+                             "content": current_system_prompt})
+
+        if memory is not None:
+            if hasattr(memory, "get_messages"):
+                messages.extend(memory.get_messages())
+
+            elif isinstance(memory, list):
+                messages.extend(memory)
+            else:
+                raise TypeError("history must be a Memory object or a list")
+
+        if context is not None:
+            if isinstance(context, dict):
+                context_text = json.dumps(context, default=str, indent=2)
+            else:
+                context_text = str(context)
+            messages.append({"role": "system",
+                             "content": ("Current shared state of the "
+                                         "multi-agent system:\n\n"
+                                         f"{context_text}")})
         return messages
 
     def get_system_prompt(self):
         """
-        This function accepts the system prompt that tells the model
-        how to behave
+        Return the current system prompt.
         """
         return self.system_prompt
 
     def set_system_prompt(self, system_prompt):
         """
-        This function sets the system prompt
+        Set the system prompt.
         """
         self.system_prompt = system_prompt

@@ -1,3 +1,4 @@
+from agent.memory import Memory
 import json
 
 
@@ -12,6 +13,7 @@ class Router:
     def __init__(self, llm, prompt_builder):
         self.llm = llm
         self.prompt_builder = prompt_builder
+        self.memory = Memory()
 
         self.available_agents = {
             "data_agent": (
@@ -35,7 +37,7 @@ class Router:
         context = state.to_dict()
         system_prompt = self._build_system_prompt()
         messages = self.prompt_builder.build_messages(
-            memory=[],
+            memory=self.memory,
             system_prompt=system_prompt,
             context={"user_request": task,
                      "current_state": context})

@@ -6,7 +6,8 @@ class DataAnalyzer:
 
     name = "analyze_dataset"
 
-    description = ("Analyze the structure and quality of a dataset."
+    description = ("Analyze the structure and quality of a dataset. "
+                   # CHANGED: added space, was "dataset."Returns"
                    "Returns information about rows, columns, data types, "
                    "missing values, and duplicated rows.")
 
@@ -16,11 +17,22 @@ class DataAnalyzer:
     def schema(self):
         """
         Schema of the data analysis tool
+
+        CHANGED: wrapped in {"type": "function", "function": {...}} to
+        match what Groq's API requires (same issue as anomalies.py).
         """
-        return {"name": self.name, "description": self.description,
-                "parameters": {"type": "object",
-                               "properties": {},
-                               "required": []}}
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            }
+        }
 
     def execute(self, arguments):
         """

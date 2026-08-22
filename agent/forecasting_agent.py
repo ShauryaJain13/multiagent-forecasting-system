@@ -1,77 +1,220 @@
 from agent.base_agent import BaseAgent
-from forecasting.evaluation import best_model_walk_forward
-# from forecasting.models import NaiveModel, HoltWinters, XGBoostRegressor
+
+from forecasting.evaluation import (
+    best_model_walk_forward
+)
+
+from forecasting.models import (
+    NaiveModel,
+    HoltWinters,
+    XGBoost
+)
 
 
 class ForecastingAgent(BaseAgent):
     """
-    This is an agent that enables the actual forecasting of the data
+    Agent responsible for selecting forecasting models,
+    evaluating them, and generating forecasts.
     """
 
-    def __init__(self, llm, tools, prompt_builder, memory):
-        super().__init__(name="Forecasting Agent", llm=llm, tools=tools,
-                         system_prompt="You are a forecasting agent. You must"
-                         "select the correct forecasting model, prepare the"
-                         "data appropriately, interpret the forecast"
-                         "correctly, and conduct all necessary tasks necessary"
-                         "to forecast accurately",
-                         prompt_builder=prompt_builder, memory=memory)
+    def __init__(
+        self,
+        llm,
+        tools,
+        prompt_builder,
+        memory
+    ):
+        super().__init__(
+            name="Forecasting Agent",
+            llm=llm,
+            tools=tools,
+            system_prompt=(
+                "You are a forecasting agent. "
+                "You are responsible for selecting "
+                "appropriate forecasting models, "
+                "evaluating them, generating forecasts, "
+                "and interpreting the results."
+            ),
+            prompt_builder=prompt_builder,
+            memory=memory
+        )
 
     def run(self, task, state):
         """
-        Processes and runs the forecasting request
+        Run the forecasting process.
         """
-        # result = super().run(task=task, state=state)
-        best_model, result = self.select_model(state)
-        state.forecast_metrics = result
-        prediction = self.forecast(best_model, state.data, self.horizon)
+
+        if state.data is None:
+            raise ValueError(
+                "Forecasting cannot begin because "
+                "no data is available."
+            )
+
+        # --------------------------------
+        # Get forecasting series
+        # --------------------------------
+
+        data = self._get_series(state)
+
+        # --------------------------------
+        # Determine forecast horizon
+        # --------------------------------
+
+        horizon = getattr(
+            state,
+            "forecast_horizon",
+            7
+        )
+
+        # --------------------------------
+        # Select and evaluate model
+        # --------------------------------
+
+        best_result, results = self.select_model(
+            data,
+            state
+        )
+
+        # Store evaluation results
+        state.forecast_metrics = results
+
+        # Store selected model
+        state.selected_model = (
+            best_result["model"]
+        )
+
+        # --------------------------------
+        # Create final model
+        # --------------------------------
+
+        model_class = (
+            best_result["model_class"]
+        )
+
+        model = model_class()
+
+        # --------------------------------
+        # Generate forecast
+        # --------------------------------
+
+        prediction = self.forecast(
+            model,
+            data,
+            horizon
+        )
+
         state.forecast = prediction
-        # state.forecast_metrics = result
-        state.mark_agent_complete(self.name)
-        return prediction  # result
 
-    def select_model(self, state):
-        """
-        Selecting the best model based on the characteristics of the dataset
-        and requirements of the forecasting request
-        """
-        data = state.data
-        # data_summary = state.data_summary
-        models = self._get_potential_models(state.data_summary)
+        # --------------------------------
+        # Mark completion
+        # --------------------------------
 
-        split_index = int(0.8 * len(data))
-        train_data = data.iloc[:split_index]
-        test_data = data.iloc[split_index:]
+        state.mark_agent_complete(
+            self.name
+        )
 
-        best_model, results = evaluate_walk_forward(models, train_data,
-                                                    test_data)
-        return best_model, results
-
-        # results = {}
-
-        # for model in models:
-        #     score = evaluate_model(model, data, state.data_summary)
-        #     results[model] = score
-        # best_model = min(results, key=results.get)
-
-        # return best_model, results
-
-    def forecast(self, model, data, horizon):
-        """
-        This method does the actual forecasting with the given model for the
-        given forecast
-        """
-        model.fit(data)
-        prediction = model.forecast(horizon)
         return prediction
-        # forecast = model.forecast(data, horizon)
-        # return forecast
+
+    def select_model(self, data, state):
+        """
+        Evaluate candidate forecasting models using
+        walk-forward validation and select the best one.
+        """
+
+        models = self._get_potential_models(
+            state.data_summary
+        )
+
+        # Use 80% of the data as the initial training set
+        train_size = int(
+            0.8 * len(data)
+        )
+
+        horizon = getattr(
+            state,
+            "forecast_horizon",
+            7
+        )
+
+        # Move forward by one forecast horizon
+        step = horizon
+
+        best_result, results = (
+            best_model_walk_forward(
+                models,
+                data,
+                train_size,
+                horizon,
+                step
+            )
+        )
+
+        return best_result, results
+
+    def forecast(
+        self,
+        model,
+        data,
+        horizon
+    ):
+        """
+        Fit the selected model on all available data
+        and generate the requested forecast.
+        """
+
+        model.fit(data)
+
+        prediction = model.predict(
+            horizon
+        )
+
+        return prediction
 
     def _get_potential_models(self, summary):
         """
-        The different basic kinds of forecasting models available
+        Return the forecasting model classes available
+        to the agent.
         """
-        models = ["naive", "holt-winters", "xgboost", "sarima"]
-        # if summary.get("has_seasonality"):
-        # models.append("sarima")
+
+        models = [
+            NaiveModel,
+            HoltWinters,
+            XGBoost
+        ]
+
         return models
+
+    def _get_series(self, state):
+        """
+        Extract the target time series from shared state.
+        """
+
+        data = state.data
+
+        # If DataAgent already identified the target
+        if hasattr(state, "target_column"):
+            target = state.target_column
+
+            if target is not None:
+                return data[target]
+
+        # If state.data is already a Series
+        if hasattr(data, "name"):
+            return data
+
+        # If there is only one numerical column
+        numerical_columns = (
+            data.select_dtypes(
+                include="number"
+            ).columns
+        )
+
+        if len(numerical_columns) == 1:
+            return data[
+                numerical_columns[0]
+            ]
+
+        raise ValueError(
+            "Unable to determine the target "
+            "forecasting column."
+        )

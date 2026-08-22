@@ -7,6 +7,12 @@ class AgentState:
         self.user_request = user_request
         self.data = None
         self.data_summary = None
+        self.target_column = None  # CHANGED: explicit default so
+    # getattr/hasattr checks in
+    # anomalies.py / forecasting_agent.py
+    # behave predictably instead of
+    # relying on the attribute simply
+    # never existing
         self.forecast = None
         self.forecast_metrics = None
         self.anomalies = []
@@ -19,7 +25,10 @@ class AgentState:
         """
         Adds the error to the current state
         """
-        return self.errors.append(error)
+        self.errors.append(error)  # CHANGED: removed the `return` --
+                                    # list.append() always returns None,
+                                    # so this had no effect either way,
+                                    # just cleaner without it
 
     def mark_agent_complete(self, agent):
         """
@@ -36,6 +45,30 @@ class AgentState:
         """
         self.current_agent = agent
 
+    def _data_preview(self):
+        """
+        CHANGED (new method): build a small, JSON-friendly summary of the
+        loaded dataset instead of embedding the full DataFrame.
+
+        Previously to_dict() returned {"data": self.data} directly. Every
+        single agent call (DataAgent, AnomalyAgent, ForecastingAgent, the
+        Router, and generate_final_response) rebuilds its prompt from
+        state.to_dict(), which gets JSON-dumped in prompts.py. For
+        anything beyond a toy CSV, that means the entire dataset gets
+        stringified into every LLM call, every iteration -- expensive and
+        pointless, since state.data_summary already carries the useful
+        structural info (rows, columns, dtypes, missing values).
+        """
+        if self.data is None:
+            return None
+
+        preview = {}
+        if hasattr(self.data, "shape"):
+            preview["shape"] = list(self.data.shape)
+        if hasattr(self.data, "columns"):
+            preview["columns"] = list(self.data.columns)
+        return preview
+
     def to_dict(self):
         """
         Converts the state to a dictionary for easy readability.
@@ -43,8 +76,9 @@ class AgentState:
         manner
         """
         return {"user_request": self.user_request,
-                "data": self.data,
+                "data": self._data_preview(),  # CHANGED: was `self.data`
                 "data_summary": self.data_summary,
+                "target_column": self.target_column,  # CHANGED: now included
                 "forecast": self.forecast,
                 "forecast_metrics": self.forecast_metrics,
                 "anomalies": self.anomalies,
